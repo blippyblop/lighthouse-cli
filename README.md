@@ -26,6 +26,12 @@ More commands and flags in Usage below.
 This project is made with heavy use of AI LLM models. This section is human
 written, but the rest is basically all AI.
 
+## Just give me the exe, nerd
+
+If you want an exe, go to releases at the right panel and select the latest
+one. Run it in powershell or cmd or something. If you've never used a CLI tool
+before now is a good opportunity to learn!
+
 ## Contents
 
 | file | what it is |
