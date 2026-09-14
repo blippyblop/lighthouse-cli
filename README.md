@@ -104,6 +104,102 @@ Transport: USB-serial CDC, 115200 8N1; ASCII lines, TX terminated by `\r`, RX
 accepts `\r` or `\n`. The base station is the USB CDC device VID `28DE` /
 PID `2500`.
 
+## Typical usage
+
+A normal session, start to finish. Commands below use Linux port names; on
+Windows use `COMx` and on macOS `/dev/cu.usbserial-*` — everything else is
+identical.
+
+### 1. Plug it in and find the port
+
+Plug the lighthouse's USB cable into the machine. It enumerates as a USB CDC
+serial device (VID `28DE` / PID `2500`); find which port it landed on:
+
+```sh
+lighthouse-cli scan
+```
+
+```
+>>> /dev/ttyUSB0   vid=28DE  pid=2500  product=...
+    /dev/ttyACM0   vid=0403  pid=6001  product=...
+```
+
+Lines marked `>>>` are lighthouses — use that port name (`/dev/ttyUSB0` here)
+for everything that follows. If no line is marked, the unit is probably not
+powered, the cable is only charging, or you need the permissions setup from
+the build notes.
+
+### 2. Connect and confirm it's the right unit
+
+```sh
+lighthouse-cli status /dev/ttyUSB0
+```
+
+This opens the port at 115200 8N1, sends the bootstrap commands (`id`,
+`journal`, `journal list`), then prints the laser telemetry the device reports
+once a second until you press Ctrl-C. The `id` response includes the device
+name and serial number — check that serial against the label on the unit to
+make sure you're talking to the lighthouse you think you are (there are more
+cross-checks in "Finding the right device" below).
+
+Example session (from the simulated-device harness included with this repo):
+
+```
+== id ==
+  | name Lighthouse Base Station
+  | serial SN0001
+  ...                       # journal / journal list output elided
+== param list laser (1s poll, Ctrl-C to stop) ==
+  laser.pwr              50
+  laser.pwr.m            0.3
+  laser.pwr.gain         4
+  laser.pwr.detected     1
+  laser.pwr.average      12
+```
+
+Real devices report their own lines — if anything looks different, record a
+trace (step 6) to see exactly what the unit sends.
+
+### 3. Make a change and watch it apply
+
+Pick a key from the "Known parameter keys" table and a value inside its range:
+
+```sh
+lighthouse-cli set /dev/ttyUSB0 laser.pwr 80
+```
+
+The tool sends `param set laser.pwr 80`, waits for the device's reply, then
+re-reads the parameter list so you can see the new value take effect. Repeat
+with as many keys as you like — each `set` is independent.
+
+### 4. Make it stick
+
+Values changed with `set` are live settings on the device. Save them so they
+survive a power cycle or reboot:
+
+```sh
+lighthouse-cli save /dev/ttyUSB0
+```
+
+### 5. Wrapping up
+
+- `lighthouse-cli reboot /dev/ttyUSB0` — restart the unit (also a handy
+  "that's the one" check, since it visibly power-cycles).
+- `lighthouse-cli save-cal /dev/ttyUSB0` — factory save-calibration.
+- `lighthouse-cli flash /dev/ttyUSB0 <payload-file>` — rewrite base
+  calibration data (advanced; see `PROTOCOL.md`). Power-cycles the device when
+  done.
+
+### 6. When it misbehaves
+
+No responses, garbled lines, or something you don't recognise? Rerun with `-v`
+to watch the raw TX/RX traffic, or with `-l` to also record it to a file:
+
+```sh
+lighthouse-cli -v status /dev/ttyUSB0
+lighthouse-cli -l trace.log status /dev/ttyUSB0
+```
+
 ## Finding the right device
 
 With several lighthouses on the network, confirm you're talking to the one you
