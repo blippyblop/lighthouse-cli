@@ -6,15 +6,15 @@
 > lighthouse.
 
 A headless command-line console for the Lighthouse base station over its USB
-serial port. It finds connected base stations, reads device identity and live
-laser telemetry, adjusts laser parameters, saves configuration to the device,
+serial port. It finds connected base stations, reads device identity and laser
+parameters, adjusts laser parameters, saves configuration to the device,
 reboots it, and can rewrite base calibration data.
 
 ## TL;DR
 
 ```sh
 lighthouse-cli scan                        # find the base station (VID 28DE / PID 2500)
-lighthouse-cli status /dev/ttyUSB0         # connect, print live laser telemetry (Ctrl-C stops)
+lighthouse-cli status /dev/ttyUSB0         # connect + read laser parameters once
 lighthouse-cli set /dev/ttyUSB0 laser.pwr 80     # change a parameter
 lighthouse-cli reboot /dev/ttyUSB0         # restart the device
 ```
@@ -87,7 +87,7 @@ tags.
 
 ```
 lighthouse-cli scan                        list ports, mark VID 28DE / PID 2500
-lighthouse-cli status <port>               bootstrap + 1 s "param list laser" poll (Ctrl-C stops)
+lighthouse-cli status <port>               bootstrap + one "param list laser" read
 lighthouse-cli log <port>                  bootstrap, then raw RX capture (Ctrl-C stops)
 lighthouse-cli sniff <port>                open + raw RX only (spontaneous traffic)
 lighthouse-cli cmd <port> <line>...        send raw line(s), print responses
@@ -136,11 +136,10 @@ lighthouse-cli status /dev/ttyUSB0
 ```
 
 This opens the port at 115200 8N1, sends the bootstrap commands (`id`,
-`journal`, `journal list`), then prints the laser telemetry the device reports
-once a second until you press Ctrl-C. The `id` response includes the device
-name and serial number — check that serial against the label on the unit to
-make sure you're talking to the lighthouse you think you are (there are more
-cross-checks in "Finding the right device" below).
+`journal`, `journal list`), then reads the laser parameters once. The `id`
+response includes the device name and serial number — check that serial against
+the label on the unit to make sure you're talking to the lighthouse you think
+you are (there are more cross-checks in "Finding the right device" below).
 
 Example session (from the simulated-device harness included with this repo):
 
@@ -149,7 +148,7 @@ Example session (from the simulated-device harness included with this repo):
   | name Lighthouse Base Station
   | serial SN0001
   ...                       # journal / journal list output elided
-== param list laser (1s poll, Ctrl-C to stop) ==
+== param list laser ==
   laser.pwr              50
   laser.pwr.m            0.3
   laser.pwr.gain         4
@@ -220,7 +219,7 @@ drives the device while recording every raw TX/RX line.
 
 ```sh
 python3 fakedev.py cmd /dev/null id "param list laser"
-python3 fakedev.py status /dev/null     # runs until the harness deadline
+python3 fakedev.py status /dev/null
 ```
 
 The harness answers from a pty slave, so the tool's framing, drain, parsing,

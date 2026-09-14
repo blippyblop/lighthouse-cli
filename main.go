@@ -43,7 +43,7 @@ func usage() {
 usage:
   lighthouse-cli scan                       list serial ports, highlight VID 28DE / PID 2500
   lighthouse-cli status <port>              connect, bootstrap (id / journal / journal list),
-                                      poll "param list laser" every 1s until Ctrl-C
+                                      print "param list laser" once
   lighthouse-cli log <port>                 connect, bootstrap, then capture all RX until Ctrl-C
   lighthouse-cli sniff <port>               open port, capture all RX (no TX) until Ctrl-C
   lighthouse-cli cmd <port> <line>...       send raw line(s), print responses until quiet
@@ -256,15 +256,10 @@ func doScan() {
 
 func doStatus(name string) {
 	s := newSession(name)
-	watchCtrlC(s)
+	defer s.p.Close()
 	s.bootstrap()
-	fmt.Println("== param list laser (1s poll, Ctrl-C to stop) ==")
-	for {
-		lines := s.roundTrip(cmdPollLsr)
-		printKV(lines, true)
-		fmt.Println()
-		time.Sleep(time.Second)
-	}
+	fmt.Println("== param list laser ==")
+	printKV(s.roundTrip(cmdPollLsr), true)
 }
 
 func doLog(name string) {

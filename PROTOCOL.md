@@ -86,8 +86,7 @@ hardware (the tool tees raw traffic, see §5).
 ## 4. Connection & polling flow
 
 1. On **Connect**: open port @115200 8N1, start the RX reader, send bootstrap
-   `id`, `journal`, `journal list`; start a poll that sends `param list laser`
-   **every 1 second**.
+   `id`, `journal`, `journal list`, then a `param list laser` read for telemetry.
 2. **Param edits**: 200 ms debounce → `param set <key> <value>` for each
    changed field → re-poll `param list laser`.
 3. **Refresh**: immediate `param list laser`.
@@ -109,7 +108,7 @@ Build: `go build -o lighthouse-cli .` (needs Go ≥1.21; dep:
 
 ```
 lighthouse-cli scan                        list ports, mark VID 28DE / PID 2500
-lighthouse-cli status <port>               bootstrap + 1 s "param list laser" poll (Ctrl-C stops)
+lighthouse-cli status <port>               bootstrap + one "param list laser" read
 lighthouse-cli log <port>                  bootstrap, then raw RX capture (Ctrl-C stops)
 lighthouse-cli sniff <port>                open + raw RX only (spontaneous traffic)
 lighthouse-cli cmd <port> <line>...        send raw line(s), print responses
@@ -129,7 +128,7 @@ raw TX/RX line. If any response format assumption in §3 is off, the trace shows
 the true lines.
 
 **Verified without hardware:** framing, port open, command dispatch, line
-parsing, poll cadence, and all subcommands were exercised against a simulated
+parsing, and all subcommands were exercised against a simulated
 device on a pty pair (`fakedev.py`): the tool sent `id` / `param list
 laser` / `param set laser.pwr.m 0.4` etc. and correctly framed, drained,
 parsed, and exited.
