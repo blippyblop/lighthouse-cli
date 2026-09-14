@@ -237,4 +237,6 @@ and dispatch are all exercised end to end.
 
 ## Changelog
 
+- **0.1.1** — `status` now does a single parameter read and exits instead of
+  polling once a second; docs updated to match.
 - **0.1.0** — First release. Untested.
