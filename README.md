@@ -1,0 +1,145 @@
+# lighthouse-cli
+
+> **WARNING**
+> This tool can be used to set your lighthouse to use parameters that can
+> damage the device. Use at your own risk, this can be used to break your
+> lighthouse.
+
+A headless command-line console for the Lighthouse base station over its USB
+serial port. It finds connected base stations, reads device identity and live
+laser telemetry, adjusts laser parameters, saves configuration to the device,
+reboots it, and can rewrite base calibration data.
+
+## TL;DR
+
+```sh
+lighthouse-cli scan                        # find the base station (VID 28DE / PID 2500)
+lighthouse-cli status /dev/ttyUSB0         # connect, print live laser telemetry (Ctrl-C stops)
+lighthouse-cli set /dev/ttyUSB0 laser.pwr 80     # change a parameter
+lighthouse-cli reboot /dev/ttyUSB0         # restart the device
+```
+
+More commands and flags in Usage below.
+
+## AI disclaimer
+
+This project is made with heavy use of AI LLM models. This section is human
+written, but the rest is basically all AI.
+
+## Contents
+
+| file | what it is |
+|---|---|
+| `main.go` | the whole tool (single file) |
+| `go.mod`, `go.sum` | module `lighthouse-cli`, dep `go.bug.st/serial v1.6.4` |
+| `PROTOCOL.md` | serial protocol documentation |
+| `fakedev.py` | test harness: simulated device on a pty pair |
+| `.github/workflows/release.yml` | CI: cross-builds the binary on version tags and attaches it to the GitHub release |
+| `LICENSE` | MIT |
+
+## Build from source
+
+Prerequisites:
+
+- **Go** >= 1.21 (any recent release works; the tool is a single file with one
+  dependency that Go fetches automatically)
+- **Linux:** access to the serial device. Either add your user to the `dialout`
+  group, or drop in a udev rule so `/dev/ttyUSB*` is open without root:
+
+  ```
+  # /etc/udev/rules.d/99-lighthouse.rules
+  SUBSYSTEM=="tty", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2500", MODE="0666"
+  ```
+
+  then `sudo udevadm control --reload-rules` and replug.
+- **macOS:** no extra setup; the serial port belongs to the logged-in user.
+- **Windows:** no extra setup; the port shows up as `COMx`.
+
+Build:
+
+```sh
+go build -o lighthouse-cli .
+```
+
+Verify it works without any hardware:
+
+```sh
+python3 fakedev.py cmd /dev/null id "param list laser"
+```
+
+The harness runs the built binary against a simulated device on a pseudo-terminal
+and should exit 0.
+
+Cross-compiling:
+
+```sh
+CGO_ENABLED=0 GOOS=linux   go build -o lighthouse-cli-linux .
+CGO_ENABLED=0 GOOS=windows go build -o lighthouse-cli.exe .
+# darwin needs cgo and a macOS host:
+GOOS=darwin                go build -o lighthouse-cli-darwin .   # on a Mac
+```
+
+Prebuilt binaries for Linux, macOS, and Windows are also attached to each
+release (GitHub Releases page) and are built automatically by CI on version
+tags.
+
+## Usage
+
+```
+lighthouse-cli scan                        list ports, mark VID 28DE / PID 2500
+lighthouse-cli status <port>               bootstrap + 1 s "param list laser" poll (Ctrl-C stops)
+lighthouse-cli log <port>                  bootstrap, then raw RX capture (Ctrl-C stops)
+lighthouse-cli sniff <port>                open + raw RX only (spontaneous traffic)
+lighthouse-cli cmd <port> <line>...        send raw line(s), print responses
+lighthouse-cli set <port> <key> <value>    param set + verify via param list laser
+lighthouse-cli save <port>                 param save
+lighthouse-cli save-cal <port>             factory save-cal
+lighthouse-cli reboot <port>               reboot
+lighthouse-cli flash <port> <payloadfile>  eeprom w 0 1344 + each line + reboot
+
+flags: -v (echo raw TX/RX), -l <file> (tee timestamped raw trace to file)
+```
+
+Transport: USB-serial CDC, 115200 8N1; ASCII lines, TX terminated by `\r`, RX
+accepts `\r` or `\n`. The base station is the USB CDC device VID `28DE` /
+PID `2500`.
+
+## Finding the right device
+
+With several lighthouses on the network, confirm you're talking to the one you
+think you are before you touch its params:
+
+- **Match the serial number.** `lighthouse-cli cmd <port> id` returns the
+  device's identity, including its serial number. Compare it against the serial
+  number printed on the device itself to line the port up with the physical
+  unit.
+- **Reboot to verify.** `lighthouse-cli reboot <port>` restarts the unit — if
+  the lighthouse you're looking at powers down and back up (status LED blinks
+  while it boots, then settles green), that's the port you just rebooted.
+
+**Ground truth on real hardware:** `lighthouse-cli -l trace.log status /dev/ttyUSB0`
+drives the device while recording every raw TX/RX line.
+
+**Verify without hardware:**
+
+```sh
+python3 fakedev.py cmd /dev/null id "param list laser"
+python3 fakedev.py status /dev/null     # runs until the harness deadline
+```
+
+The harness answers from a pty slave, so the tool's framing, drain, parsing,
+and dispatch are all exercised end to end.
+
+## Known parameter keys
+
+| key | type | range |
+|---|---|---|
+| `laser.pwr.m` | float | 0.1 … 0.5 |
+| `laser.pwr.gain` | int | 0 … 7 |
+| `laser.pwr` | int | 0 … 100 |
+| `laser.pwr.b1` | float | 0 … 10 |
+| `laser.pwr.b2` | float | −20 … 20 |
+
+## Changelog
+
+- **0.1.0** — First release. Untested.
