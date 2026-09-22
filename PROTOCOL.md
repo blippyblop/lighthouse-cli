@@ -109,6 +109,8 @@ Build: `go build -o lighthouse-cli .` (needs Go ≥1.21; dep:
 ```
 lighthouse-cli scan                        list ports, mark VID 28DE / PID 2500
 lighthouse-cli status <port>               bootstrap + one "param list laser" read
+lighthouse-cli monitor <port>              bootstrap, then poll "param list laser"
+                                           every 500ms until Ctrl-C
 lighthouse-cli log <port>                  bootstrap, then raw RX capture (Ctrl-C stops)
 lighthouse-cli sniff <port>                open + raw RX only (spontaneous traffic)
 lighthouse-cli cmd <port> <line>...        send raw line(s), print responses

@@ -29,7 +29,7 @@ written, but the rest is basically all AI.
 ## Just give me the exe, nerd
 
 If you want an exe, go to releases at the right panel and select the latest
-one (v0.2.0 at time of writing). Run it in powershell or cmd or something. If
+one (v0.3.0 at time of writing). Run it in powershell or cmd or something. If
 you've never used a CLI tool before now is a good opportunity to learn!
 
 ## Contents
@@ -94,6 +94,8 @@ tags.
 ```
 lighthouse-cli scan                        list ports, mark VID 28DE / PID 2500
 lighthouse-cli status <port>               bootstrap + one "param list laser" read
+lighthouse-cli monitor <port>              bootstrap, then poll "param list laser"
+                                           every 500ms until Ctrl-C
 lighthouse-cli log <port>                  bootstrap, then raw RX capture (Ctrl-C stops)
 lighthouse-cli sniff <port>                open + raw RX only (spontaneous traffic)
 lighthouse-cli cmd <port> <line>...        send raw line(s), print responses
@@ -176,7 +178,9 @@ lighthouse-cli set /dev/ttyUSB0 laser.pwr 80
 
 The tool sends `param set laser.pwr 80`, waits for the device's reply, then
 re-reads the parameter list so you can see the new value take effect. Repeat
-with as many keys as you like — each `set` is independent.
+with as many keys as you like — each `set` is independent. To watch the laser
+values live without poking the device, run `lighthouse-cli monitor /dev/ttyUSB0`
+instead (polls every 500ms, Ctrl-C to stop).
 
 ### 4. Make it stick
 
@@ -244,6 +248,8 @@ and dispatch are all exercised end to end.
 
 ## Changelog
 
+- **0.3.0** — `monitor` command: bootstrap once, then poll "param list laser"
+  every ~500ms until Ctrl-C (values with timestamps).
 - **0.2.0** — `version` command: the binary now reports its own version.
 - **0.1.1** — `status` now does a single parameter read and exits instead of
   polling once a second; docs updated to match.
