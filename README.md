@@ -29,8 +29,8 @@ written, but the rest is basically all AI.
 ## Just give me the exe, nerd
 
 If you want an exe, go to releases at the right panel and select the latest
-one. Run it in powershell or cmd or something. If you've never used a CLI tool
-before now is a good opportunity to learn!
+one (v0.2.0 at time of writing). Run it in powershell or cmd or something. If
+you've never used a CLI tool before now is a good opportunity to learn!
 
 ## Contents
 
@@ -102,6 +102,7 @@ lighthouse-cli save <port>                 param save
 lighthouse-cli save-cal <port>             factory save-cal
 lighthouse-cli reboot <port>               reboot
 lighthouse-cli flash <port> <payloadfile>  eeprom w 0 1344 + each line + reboot
+lighthouse-cli version                    print version
 
 flags: -v (echo raw TX/RX), -l <file> (tee timestamped raw trace to file)
 ```
@@ -243,6 +244,7 @@ and dispatch are all exercised end to end.
 
 ## Changelog
 
+- **0.2.0** — `version` command: the binary now reports its own version.
 - **0.1.1** — `status` now does a single parameter read and exits instead of
   polling once a second; docs updated to match.
 - **0.1.0** — First release. Untested.
