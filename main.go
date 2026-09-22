@@ -12,6 +12,8 @@ import (
 )
 
 const (
+	version = "0.2.0"
+
 	vidLighthouse = "28DE"
 	pidLighthouse = "2500"
 
@@ -31,9 +33,9 @@ type lineCh struct {
 }
 
 type session struct {
-	p   serial.Port
-	out chan lineCh
-	lf  *os.File
+	p    serial.Port
+	out  chan lineCh
+	lf   *os.File
 	verb bool
 }
 
@@ -52,6 +54,7 @@ usage:
   lighthouse-cli save-cal <port>            "factory save-cal"
   lighthouse-cli reboot <port>              "reboot"
   lighthouse-cli flash <port> <b64file>     "eeprom w 0 1344" + each b64 line + "reboot"
+  lighthouse-cli version                    print version
 
 known param keys:
   laser.pwr.m      float  0.1 .. 0.5
@@ -150,13 +153,13 @@ type kv struct {
 }
 
 var laserKeys = map[string]bool{
-	"laser.pwr":        true,
-	"laser.pwr.m":      true,
-	"laser.pwr.gain":   true,
-	"laser.pwr.b1":     true,
-	"laser.pwr.b2":     true,
-	"laser.pwr.detected":  true,
-	"laser.pwr.average":   true,
+	"laser.pwr":          true,
+	"laser.pwr.m":        true,
+	"laser.pwr.gain":     true,
+	"laser.pwr.b1":       true,
+	"laser.pwr.b2":       true,
+	"laser.pwr.detected": true,
+	"laser.pwr.average":  true,
 }
 
 func parseKV(lines []string) []kv {
@@ -312,6 +315,10 @@ func doSimple(name, line string) {
 	showRaw(s.roundTrip(line))
 }
 
+func doVersion() {
+	fmt.Printf("lighthouse-cli %s\n", version)
+}
+
 func doFlash(name, file string) {
 	data, err := os.ReadFile(file)
 	if err != nil {
@@ -414,6 +421,8 @@ func main() {
 			os.Exit(2)
 		}
 		doFlash(rest[0], rest[1])
+	case "version":
+		doVersion()
 	case "help", "-h", "--help":
 		usage()
 	default:
