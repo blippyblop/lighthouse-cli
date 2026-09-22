@@ -1,4 +1,4 @@
-import os, pty, select, subprocess, sys, time
+import os, pty, select, signal, subprocess, sys, time
 
 master, slave = pty.openpty()
 slave_name = os.ttyname(slave)
@@ -18,9 +18,12 @@ RESP = {
 import pathlib
 argv = [str(pathlib.Path(__file__).with_name("lighthouse-cli")), "-v"] + sys.argv[1:]
 for i, a in enumerate(argv):
-    if i >= 2 and a not in ("cmd","set","save","save-cal","reboot","flash","status","log","sniff"):
+    if i >= 2 and a not in ("cmd","set","save","save-cal","reboot","flash","status","log","sniff","monitor"):
         argv[i] = slave_name
         break
+
+LONGRUN = ("log", "sniff", "monitor")
+cmdname = sys.argv[1] if len(sys.argv) > 1 else ""
 
 print(f"[harness] slave={slave_name} child={' '.join(argv)}", flush=True)
 proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -51,7 +54,11 @@ def pump():
             print(f"[dev]  TX: {r.decode()!r}", flush=True)
 
 deadline = time.time() + 25
+sigint_at = time.time() + 8 if cmdname in LONGRUN else None
 while proc.poll() is None and time.time() < deadline:
+    if sigint_at is not None and time.time() > sigint_at:
+        proc.send_signal(signal.SIGINT)
+        sigint_at = None
     r, _, _ = select.select([master], [], [], 0.2)
     if master in r:
         pump()

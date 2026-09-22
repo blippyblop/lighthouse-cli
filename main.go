@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	version = "0.2.0"
+	version = "0.3.0"
 
 	vidLighthouse = "28DE"
 	pidLighthouse = "2500"
@@ -46,6 +46,8 @@ usage:
   lighthouse-cli scan                       list serial ports, highlight VID 28DE / PID 2500
   lighthouse-cli status <port>              connect, bootstrap (id / journal / journal list),
                                       print "param list laser" once
+  lighthouse-cli monitor <port>             connect, bootstrap, then poll "param list laser"
+                                      every 500ms until Ctrl-C
   lighthouse-cli log <port>                 connect, bootstrap, then capture all RX until Ctrl-C
   lighthouse-cli sniff <port>               open port, capture all RX (no TX) until Ctrl-C
   lighthouse-cli cmd <port> <line>...       send raw line(s), print responses until quiet
@@ -199,6 +201,11 @@ func (s *session) roundTrip(line string) []string {
 	return s.drain(700*time.Millisecond, 5*time.Second)
 }
 
+func (s *session) pollLaser() []string {
+	s.send(cmdPollLsr)
+	return s.drain(300*time.Millisecond, 3*time.Second)
+}
+
 func (s *session) bootstrap() {
 	for _, c := range []string{cmdID, cmdJournal, cmdJrnlList} {
 		fmt.Printf("== %s ==\n", c)
@@ -263,6 +270,23 @@ func doStatus(name string) {
 	s.bootstrap()
 	fmt.Println("== param list laser ==")
 	printKV(s.roundTrip(cmdPollLsr), true)
+}
+
+func doMonitor(name string) {
+	s := newSession(name)
+	watchCtrlC(s)
+	s.bootstrap()
+	fmt.Println("== param list laser (polling every 500ms, Ctrl-C to stop) ==")
+	period := 500 * time.Millisecond
+	for {
+		start := time.Now()
+		lines := s.pollLaser()
+		fmt.Printf("[%s]\n", time.Now().Format("15:04:05.000"))
+		printKV(lines, true)
+		if d := period - time.Since(start); d > 0 {
+			time.Sleep(d)
+		}
+	}
 }
 
 func doLog(name string) {
@@ -388,6 +412,9 @@ func main() {
 	case "status":
 		needArgs(rest, 1)
 		doStatus(rest[0])
+	case "monitor":
+		needArgs(rest, 1)
+		doMonitor(rest[0])
 	case "log":
 		needArgs(rest, 1)
 		doLog(rest[0])
